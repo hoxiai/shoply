@@ -237,12 +237,24 @@ fi
 get_profile_args() {
     local args=()
     if [ -f ".env" ]; then
+        local db_driver=$(grep -E "^SHOPARK_DB_DRIVER=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' | tr '[:upper:]' '[:lower:]' || true)
+        local db_host=$(grep -E "^SHOPARK_DB_HOST=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
         local use_mysql=$(grep -E "^USE_EMBEDDED_MYSQL=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
+        local use_postgres=$(grep -E "^USE_EMBEDDED_POSTGRES=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
         local use_redis=$(grep -E "^USE_EMBEDDED_REDIS=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
 
-        if [ "$use_mysql" = "true" ] || [ -z "$use_mysql" ]; then
-            args+=(--profile mysql)
-        fi
+        case "$db_driver" in
+            pgsql|postgres|postgresql)
+                if [ "$use_postgres" = "true" ] || { [ -z "$use_postgres" ] && [ "$db_host" = "postgres" ]; }; then
+                    args+=(--profile postgres)
+                fi
+                ;;
+            *)
+                if [ "$use_mysql" = "true" ] || [ -z "$use_mysql" ]; then
+                    args+=(--profile mysql)
+                fi
+                ;;
+        esac
         if [ "$use_redis" = "true" ] || [ -z "$use_redis" ]; then
             args+=(--profile redis)
         fi

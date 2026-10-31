@@ -17,6 +17,7 @@ services:
       - SHOPARK_DB_DATABASE=${SHOPARK_DB_DATABASE:-shopark}
       - SHOPARK_DB_USERNAME=${SHOPARK_DB_USERNAME:-shopark}
       - SHOPARK_DB_PASSWORD=${SHOPARK_DB_PASSWORD:?set SHOPARK_DB_PASSWORD in .env}
+      - SHOPARK_DB_SSLMODE=${SHOPARK_DB_SSLMODE:-}
       # Redis 缓存连接
       - SHOPARK_REDIS_ADDR=${SHOPARK_REDIS_ADDR:-redis:6379}
       - SHOPARK_REDIS_PASSWORD=${SHOPARK_REDIS_PASSWORD:-}
@@ -66,6 +67,23 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres:
+    profiles: ["postgres", "pgsql"]
+    image: postgres:16-alpine
+    container_name: shopark-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SHOPARK_DB_DATABASE:-shopark}
+      POSTGRES_USER: ${SHOPARK_DB_USERNAME:-shopark}
+      POSTGRES_PASSWORD: ${SHOPARK_DB_PASSWORD:-shopark_db_password_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     profiles: ["redis"]
     image: redis:7-alpine
@@ -84,4 +102,5 @@ services:
 
 volumes:
   mysql_data:
+  postgres_data:
   redis_data:

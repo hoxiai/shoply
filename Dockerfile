@@ -45,10 +45,12 @@ RUN set -eux; \
     apk add --no-cache --virtual .shopark-phpext-rundeps $runDeps; \
     apk del --no-network .build-deps; \
     rm -rf /tmp/pear ~/.pearrc /usr/local/lib/php/test /usr/local/lib/php/doc; \
-    # purego (webp 动态加载) 产生 libc/libdl 动态链接，引入 gcompat 兼容层保证 Alpine 正常执行
-    apk add --no-cache bash gcompat nodejs tzdata; \
+    # purego (webp 动态加载) 产生 libc/libdl 动态链接，引入 gcompat 兼容层保证 Alpine 正常执行；
+    # 同时安装 postgresql-client 与 mysql-client 供 php shopark db:backup / db:restore 使用
+    apk add --no-cache bash gcompat nodejs tzdata postgresql-client mysql-client; \
     php -m | grep -qi '^protobuf$'; \
     php -r 'foreach (["mysql", "pgsql"] as $driver) { if (!in_array($driver, PDO::getAvailableDrivers(), true)) { exit(1); } }'; \
+    command -v pg_dump >/dev/null && command -v psql >/dev/null && command -v mysqldump >/dev/null && command -v mysql >/dev/null; \
     node -v
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer

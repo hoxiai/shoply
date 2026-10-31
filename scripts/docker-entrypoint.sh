@@ -231,7 +231,12 @@ wait_for_port() {
 
 # 1. 检查并等待外部数据库就绪
 if [ -n "$SHOPARK_DB_HOST" ]; then
-    DB_PORT="${SHOPARK_DB_PORT:-3306}"
+    DB_DRIVER_LOWER=$(printf '%s' "${SHOPARK_DB_DRIVER:-mysql}" | tr '[:upper:]' '[:lower:]')
+    case "$DB_DRIVER_LOWER" in
+        pgsql|postgres|postgresql) DEFAULT_DB_PORT=5432 ;;
+        *) DEFAULT_DB_PORT=3306 ;;
+    esac
+    DB_PORT="${SHOPARK_DB_PORT:-$DEFAULT_DB_PORT}"
     wait_for_port "$SHOPARK_DB_HOST" "$DB_PORT" "Database"
 fi
 

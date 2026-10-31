@@ -648,12 +648,24 @@ EOF
 get_profile_args() {
     local args=()
     if [ -f ".env" ]; then
+        local db_driver=$(grep -E "^SHOPARK_DB_DRIVER=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' | tr '[:upper:]' '[:lower:]' || true)
+        local db_host=$(grep -E "^SHOPARK_DB_HOST=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
         local use_mysql=$(grep -E "^USE_EMBEDDED_MYSQL=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
+        local use_postgres=$(grep -E "^USE_EMBEDDED_POSTGRES=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
         local use_redis=$(grep -E "^USE_EMBEDDED_REDIS=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "\r' || true)
 
-        if [ "$use_mysql" = "true" ] || [ -z "$use_mysql" ]; then
-            args+=(--profile mysql)
-        fi
+        case "$db_driver" in
+            pgsql|postgres|postgresql)
+                if [ "$use_postgres" = "true" ] || { [ -z "$use_postgres" ] && [ "$db_host" = "postgres" ]; }; then
+                    args+=(--profile postgres)
+                fi
+                ;;
+            *)
+                if [ "$use_mysql" = "true" ] || [ -z "$use_mysql" ]; then
+                    args+=(--profile mysql)
+                fi
+                ;;
+        esac
         if [ "$use_redis" = "true" ] || [ -z "$use_redis" ]; then
             args+=(--profile redis)
         fi
@@ -723,8 +735,8 @@ restart_service() {
     profile_args=$(get_profile_args)
     echo "[Shopark] 正在安全重启服务 (重新加载 .env 配置与容器编排)..."
 
-    # 先停用所有可能运行的容器 profile (包含内置 mysql/redis)，确保变更被彻底重置
-    $COMPOSE_CMD --profile mysql --profile redis down 2>/dev/null || $COMPOSE_CMD down 2>/dev/null || true
+    # 先停用所有可能运行的容器 profile (包含内置 mysql/postgres/redis)，确保变更被彻底重置
+    $COMPOSE_CMD --profile mysql --profile postgres --profile redis down 2>/dev/null || $COMPOSE_CMD down 2>/dev/null || true
     # 强制重建并拉起符合最新 .env 配置的服务
     $COMPOSE_CMD $profile_args up -d --force-recreate
 
